@@ -70,7 +70,6 @@ if "-h" in sys.argv or "-help" in sys.argv or "--help" in sys.argv:
 	raise SystemExit
 
 def conv_vid(file):
-	print "Transcoding video"
 	if options.hq:
 		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` +":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	elif options.lq:
@@ -85,6 +84,8 @@ def conv_vid(file):
 		basename = os.path.splitext ( file )[0]
 		if options.sub != None:
 			v_cmd = " -sub \"" + options.sub + "\" " + v_cmd
+		elif os.path.exists ( basename + ".ass" ):
+			v_cmd = " -sub \"" + basename + ".ass" + "\" " + v_cmd
 		elif os.path.exists ( basename + ".srt" ):
 			v_cmd = " -sub \"" + basename + ".srt" + "\" " + v_cmd
 		elif os.path.exists ( basename + ".sub" ):
@@ -99,10 +100,17 @@ def conv_vid(file):
 
 	v_cmd = MENCODER + " " + v_cmd
 
-#	print  v_cmd
+	proc = subprocess.Popen(v_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=subprocess.STDOUT)
 
-	v_out = commands.getoutput ( v_cmd )
+	v_out = ""
 	
+	p = re.compile ("f (\(.*%\))")
+	for line in proc.stdout:
+		v_out = v_out + line
+		m = p.search( line )
+		if m:
+			print "Transcoding video: " + m.group(1) + "\r" ,
+	print "Transcoding video:   done"
 	p = re.compile ("([0-9]*)( frames)")
 	m = p.search( v_out )
 	origframes = int(m.group(1))
@@ -118,8 +126,7 @@ def conv_vid(file):
 	return frames
 
 def conv_aud(file):
-	print "Transcoding Audio"
-	a_cmd = ( MENCODER + " -quiet \"" +file + "\" -v -of rawaudio -oac lavc -ovc copy -lavcopts acodec=mp2:abitrate=" + `options.abps` + " -o " + MP2TMP )
+	a_cmd = ( MENCODER + " \"" +file + "\" -v -of rawaudio -oac lavc -ovc copy -lavcopts acodec=mp2:abitrate=" + `options.abps` + " -o " + MP2TMP )
 	identify = commands.getoutput( "mplayer -frames 0 -vo null -ao null -identify \"" + file + "\" | grep -E \"^ID|VIDEO|AUDIO\"")
 	p = re.compile ("([0-9]*)( ch)")
 	m = p.search( identify )
@@ -135,7 +142,17 @@ def conv_aud(file):
 		else:
 			a_cmd = a_cmd + " -af channels=1,resample=" +`options.hz`+ ":1:2"
 
-	a_out = commands.getoutput ( a_cmd )
+	proc = subprocess.Popen(a_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=subprocess.STDOUT)
+
+	v_out = ""
+	
+	p = re.compile ("f (\(.*%\))")
+	for line in proc.stdout:
+		m = p.search( line )
+		if m:
+			print "Transcoding audio: " + m.group(1) + "\r" ,
+	print "Transcoding audio:   done"
+
 
 def write_header(frames):
 	print "Creating header"
@@ -144,10 +161,8 @@ def write_header(frames):
 	videosize = os.stat(MPGTMP)[stat.ST_SIZE]
 	videostart = audiostart + audiosize
 	videoend = videostart + videosize
-	locationValues = [ int(audiostart), int(audiosize), int(videostart), int(videosize) ]
 	f=open(HEADERTMP, 'wb')
-	
-	headerValues = [ "DPG0", int(frames), options.fps, 0, options.hz , 0 ]
+	headerValues = [ "DPG0", int(frames), options.fps, 0, options.hz , 0 ,int(audiostart), int(audiosize), int(videostart), int(videosize) ]
 	
 	f.write (struct.pack( "4s" , headerValues[0]))
 	f.write (struct.pack ( "<l" , headerValues[1]))
@@ -155,11 +170,11 @@ def write_header(frames):
 	f.write (struct.pack ( ">h" , headerValues[3]))
 	f.write (struct.pack ( "<l" , headerValues[4]))
 	f.write (struct.pack ( "<l" , headerValues[5]))
+	f.write (struct.pack ( "<l" , headerValues[6]))
+	f.write (struct.pack ( "<l" , headerValues[7]))
+	f.write (struct.pack ( "<l" , headerValues[8]))
+	f.write (struct.pack ( "<l" , headerValues[9]))
 
-	f.write (struct.pack ( "<l" ,locationValues[0]))
-	f.write (struct.pack ( "<l" ,locationValues[1]))
-	f.write (struct.pack ( "<l" ,locationValues[2]))
-	f.write (struct.pack ( "<l" ,locationValues[3]))
 	f.close()
 
 def conv_file(file):
@@ -200,6 +215,6 @@ parser.add_option("--nosub",action="store_true", dest="nosub", default=False)
 (options, args) = parser.parse_args()
 
 #print (options)
-import commands,re,stat,struct
+import commands,re,stat,struct,subprocess
 for file in args:
 	conv_file(file)
