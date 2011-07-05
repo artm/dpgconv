@@ -35,6 +35,8 @@ command line options:
 		2 - stereo, 1 - mono
 		default is to leave as is unless input audio channels
 		number is bigger then 2 ... then default is stereo
+	--aid n
+		use audio track n
 	--height xxx
 		destination video height
 	--width xxx
@@ -53,6 +55,8 @@ command line options:
 	--sub,-s xxx
 		Specify subtitles for hardcoding into video output
 		(is obviously only usable if you specify one file at a time)
+	--sid n
+		use subtitle track n
 	--subcp xxx
 		specify subtitles encoding
 	--font xxx
@@ -129,6 +133,8 @@ def conv_vid(file):
 			v_cmd = " -sub \"" + options.sub + "\" " + v_cmd
 	else:
 		basename = os.path.splitext ( file )[0]
+		if options.sid != None:
+			v_cmd = " -sid \"" + str(options.sid) + "\" " + v_cmd
 		if options.sub != None:
 			v_cmd = " -sub \"" + options.sub + "\" " + v_cmd
 		elif os.path.exists ( basename + ".ass" ):
@@ -146,6 +152,8 @@ def conv_vid(file):
 		v_cmd = " -font \"" + options.font + "\"" + v_cmd
 
 	v_cmd = MENCODER + " " + v_cmd
+	v_cmd = v_cmd + " " + options.mv
+	#print v_cmd 
 	proc = subprocess.Popen(v_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=open('/dev/null', 'w'))
 	
 	p = re.compile ("f (\(.*%\))")
@@ -178,6 +186,12 @@ def conv_aud(file):
 	else:
 		print "Error running mplayer:"
 		print identify
+
+	if options.aid != None:
+		a_cmd = a_cmd + " -aid " + str(options.aid)
+
+	a_cmd = a_cmd + " " + options.ma
+	#print a_cmd
 
 	proc = subprocess.Popen(a_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=subprocess.STDOUT)
 
@@ -256,7 +270,7 @@ def mpeg_stat():
 def conv_file(file):
 	if not (os.path.lexists ( file )):
 		print "File " + file + " doesn't exist"
-		return
+#		return
 	print "Converting " + file
 	conv_vid (file)
 	conv_aud(file)
@@ -292,12 +306,13 @@ parser.add_option("-c","--channels", type="int", dest="channels")
 parser.add_option("--subcp", dest="subcp")
 parser.add_option("-s","--sub", dest="sub")
 parser.add_option("--font", dest="font")
-parser.add_option("--mv", dest="mv")
-parser.add_option("--ma", dest="ma")
+parser.add_option("--mv", dest="mv",default="")
+parser.add_option("--ma", dest="ma",default="")
 parser.add_option("--nosub",action="store_true", dest="nosub", default=False)
 parser.add_option("--dpg", type="int" , dest="dpg", default=2)
 parser.add_option("--pf", type="int" , dest="pf", default=3)
-
+parser.add_option("--sid", type="int" , dest="sid")
+parser.add_option("--aid", type="int" , dest="aid")
 (options, args) = parser.parse_args()
 
 import signal
