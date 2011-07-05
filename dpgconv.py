@@ -63,6 +63,7 @@ import sys, os, optparse
 MP2TMP="mp2tmp.mp2"
 MPGTMP="mpgtmp.mpg"
 HEADERTMP="header.tmp"
+MENCODER="mencoder"
 #Print a help message if requested.
 if "-h" in sys.argv or "-help" in sys.argv or "--help" in sys.argv:
 	print __doc__
@@ -71,11 +72,11 @@ if "-h" in sys.argv or "-help" in sys.argv or "--help" in sys.argv:
 def conv_vid(file):
 	print "Transcoding video"
 	if options.hq:
-		v_cmd =  ( " -quiet \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` +":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` +":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	elif options.lq:
-		v_cmd = ( " -quiet \"" + file + "\" -v -ofps " + `options.fps` + " -vf scale=" + `options.width` + ":" + `options.height` + " -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd = ( " \"" + file + "\" -v -ofps " + `options.fps` + " -vf scale=" + `options.width` + ":" + `options.height` + " -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	else :
-		v_cmd = ( " -quiet \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` + ":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
+		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` + ":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
 	
 	if options.nosub:
 		if options.sub != None:
@@ -94,22 +95,31 @@ def conv_vid(file):
 	if options.subcp != None:
 		v_cmd = " -subcp " + options.subcp + v_cmd
 	if options.font != None:
-		v_cmd = " -font " + options.font + v_cmd
+		v_cmd = " -font \"" + options.font + "\"" + v_cmd
 
-	v_cmd = "mencoder " + v_cmd
+	v_cmd = MENCODER + " " + v_cmd
 
 #	print  v_cmd
 
 	v_out = commands.getoutput ( v_cmd )
+	
 	p = re.compile ("([0-9]*)( frames)")
 	m = p.search( v_out )
-	frames = m.group(1)
-	print "Total frames:" + frames
+	origframes = int(m.group(1))
+	p = re.compile ("Skipping frame")
+	skipped_frames = len(p.findall( v_out ))
+	p = re.compile ("duplicate frame")
+	duplicate_frame = len(p.findall( v_out ))
+	frames = origframes - skipped_frames + duplicate_frame
+	print "Original file total frames:" + `origframes`
+	print "Skipped "  + `skipped_frames` + " frames"
+	print "Duplicated "  + `duplicate_frame` + " frames"
+	print "Output file total frames:" + `frames`
 	return frames
 
 def conv_aud(file):
 	print "Transcoding Audio"
-	a_cmd = ( "mencoder -quiet \"" +file + "\" -v -of rawaudio -oac lavc -ovc copy -lavcopts acodec=mp2:abitrate=" + `options.abps` + " -o " + MP2TMP )
+	a_cmd = ( MENCODER + " -quiet \"" +file + "\" -v -of rawaudio -oac lavc -ovc copy -lavcopts acodec=mp2:abitrate=" + `options.abps` + " -o " + MP2TMP )
 	identify = commands.getoutput( "mplayer -frames 0 -vo null -ao null -identify \"" + file + "\" | grep -E \"^ID|VIDEO|AUDIO\"")
 	p = re.compile ("([0-9]*)( ch)")
 	m = p.search( identify )
