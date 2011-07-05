@@ -243,9 +243,9 @@ def mpeg_stat():
 				sline = line.split()
 				if sline[0] == "picture" :
 					frame += 1
-				elif sline[0] == "gop":
+				elif sline[0] == "sequence":
 					gop.write (struct.pack ( "<l" , frame ))
-					gop.write (struct.pack ( "<l" , int(sline[1])/8 - 140 ))
+					gop.write (struct.pack ( "<l" , int(sline[1])/8 )) # mpeg_stat shows bit offsets
 			gop.close()
 			stat.close()
 	else:
