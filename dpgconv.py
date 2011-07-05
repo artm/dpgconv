@@ -5,8 +5,18 @@
 """A script to transcode video files to DPG format suitable for
    Nintendo DS (tm)
    
-dpgconv.py /home/foo/blah.avi /home/foo/blah2.avi
+dpgconv.py file1 file2 file3 ... fileN
 command line options:
+	--dpg
+		0,1,2 sets DPG version.. default is DPG2
+	
+	--pf
+		sets pixel format, default is 3
+		0        RGB15
+		1        RGB18
+		2        RGB21
+		3        RGB24 
+
 	-q,--hq
 		high quality video
 	-l,--lq
@@ -63,19 +73,56 @@ import sys, os, optparse
 MP2TMP="mp2tmp.mp2"
 MPGTMP="mpgtmp.mpg"
 HEADERTMP="header.tmp"
+GOPTMP="gop.tmp"
+STATTMP="stat.tmp"
+
 MENCODER="mencoder"
+MPLAYER="mplayer"
+MPEG_STAT="mpeg_stat"
+
+
+
+
 #Print a help message if requested.
 if "-h" in sys.argv or "-help" in sys.argv or "--help" in sys.argv:
 	print __doc__
 	raise SystemExit
 
+def cleanup_callback(a,b):
+	print "Removing temporary files"
+	if os.path.lexists ( MPGTMP ):
+		os.unlink ( MPGTMP )
+	if os.path.lexists ( MP2TMP ):
+		os.unlink ( MP2TMP )
+	if os.path.lexists ( HEADERTMP ):
+		os.unlink ( HEADERTMP )
+	if os.path.lexists ( GOPTMP ):
+		os.unlink ( GOPTMP )
+	if os.path.lexists ( STATTMP ):
+		os.unlink ( STATTMP )
+
 def conv_vid(file):
+	if options.dpg == 0:
+		v_pf = "format=rgb24,"
+		options.pf = 3
+	elif options.pf == 3:
+		v_pf = "format=rgb24,"
+	elif options.pf == 2:
+		v_pf = "format=rgb21,"
+	elif options.pf == 1:
+		v_pf = "format=rgb18,"
+	elif options.pf == 0:
+		v_pf = "format=rgb15,"
+	else:
+		v_pf = "format=rgb24,"
+		options.pf = 3
+
 	if options.hq:
-		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` +":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	elif options.lq:
-		v_cmd = ( " \"" + file + "\" -v -ofps " + `options.fps` + " -vf scale=" + `options.width` + ":" + `options.height` + " -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd = ( " \"" + file + "\" -v -ofps " + `options.fps` + " -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + " -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	else :
-		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf scale=" + `options.width` + ":" + `options.height` + ":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
+		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
 	
 	if options.nosub:
 		if options.sub != None:
@@ -99,35 +146,42 @@ def conv_vid(file):
 		v_cmd = " -font \"" + options.font + "\"" + v_cmd
 
 	v_cmd = MENCODER + " " + v_cmd
-
-	proc = subprocess.Popen(v_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=subprocess.STDOUT)
-
-	v_out = ""
+	proc = subprocess.Popen(v_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=open('/dev/null', 'w'))
+	
+#	v_out = ""
 	
 	p = re.compile ("f (\(.*%\))")
+#	f = re.compile ("([0-9]*)\/([0-9]*)\/([0-9]*)")
 	for line in proc.stdout:
-		v_out = v_out + line
+#		v_out = v_out + line
 		m = p.search( line )
+		
 		if m:
 			print "Transcoding video: " + m.group(1) + "\r" ,
+#		m = f.search(line)
+#		if m:
+#			duplicate_frame = int (m.group (1))
+#			bad_frames = int (m.group(2))
+#			skipped_frames = int (m.group(3))
+
+
 	print "Transcoding video:   done"
-	p = re.compile ("([0-9]*)( frames)")
-	m = p.search( v_out )
-	origframes = int(m.group(1))
-	p = re.compile ("Skipping frame")
-	skipped_frames = len(p.findall( v_out ))
-	p = re.compile ("duplicate frame")
-	duplicate_frame = len(p.findall( v_out ))
-	frames = origframes - skipped_frames + duplicate_frame
-	print "Original file total frames:" + `origframes`
-	print "Skipped "  + `skipped_frames` + " frames"
-	print "Duplicated "  + `duplicate_frame` + " frames"
-	print "Output file total frames:" + `frames`
-	return frames
+#	p = re.compile ("secs  ([0-9]*)( frames)")
+#	m = p.search( v_out )
+#	origframes = int(m.group(1))
+	
+#	frames = origframes - bad_frames + duplicate_frame
+	
+#	print "Original file total frames:" + `origframes`
+#	print "Skipped "  + `skipped_frames` + " frames"
+#	print "Duplicated "  + `duplicate_frame` + " frames"
+#	print `bad_frames` + " bad "  + " frames"
+#	print "Output file total frames:" + `frames`
+#	return frames
 
 def conv_aud(file):
 	a_cmd = ( MENCODER + " \"" +file + "\" -v -of rawaudio -oac lavc -ovc copy -lavcopts acodec=mp2:abitrate=" + `options.abps` + " -o " + MP2TMP )
-	identify = commands.getoutput( "mplayer -frames 0 -vo null -ao null -identify \"" + file + "\" | grep -E \"^ID|VIDEO|AUDIO\"")
+	identify = commands.getoutput( MPLAYER + " -frames 0 -vo null -ao null -identify \"" + file + "\" | grep -E \"^ID|VIDEO|AUDIO\"")
 	p = re.compile ("([0-9]*)( ch)")
 	m = p.search( identify )
 	if m:
@@ -156,13 +210,20 @@ def conv_aud(file):
 
 def write_header(frames):
 	print "Creating header"
+
 	audiostart=36
+	if options.dpg == 1:
+		audiostart += 4
+	elif options.dpg == 2:
+		audiostart += 12
+	
 	audiosize = os.stat(MP2TMP)[stat.ST_SIZE]
 	videosize = os.stat(MPGTMP)[stat.ST_SIZE]
 	videostart = audiostart + audiosize
 	videoend = videostart + videosize
 	f=open(HEADERTMP, 'wb')
-	headerValues = [ "DPG0", int(frames), options.fps, 0, options.hz , 0 ,int(audiostart), int(audiosize), int(videostart), int(videosize) ]
+	DPG = "DPG" + `options.dpg`
+	headerValues = [ DPG, int(frames), options.fps, 0, options.hz , 0 ,int(audiostart), int(audiosize), int(videostart), int(videosize) ]
 	
 	f.write (struct.pack( "4s" , headerValues[0]))
 	f.write (struct.pack ( "<l" , headerValues[1]))
@@ -175,21 +236,50 @@ def write_header(frames):
 	f.write (struct.pack ( "<l" , headerValues[8]))
 	f.write (struct.pack ( "<l" , headerValues[9]))
 
+	if options.dpg == 0:
+		f.write (struct.pack ( "<l" , options.pf ))
+	if options.dpg == 2:
+		gopsize = os.stat(GOPTMP)[stat.ST_SIZE]
+		f.write (struct.pack ( "<l" , videoend ))
+		f.write (struct.pack ( "<l" , gopsize))
+		f.write (struct.pack ( "<l" , options.pf ))
+
+
 	f.close()
+def mpeg_stat():
+	p = re.compile ("frames: ([0-9]*)\.")
+	s_out = commands.getoutput( MPEG_STAT + " -offset " + STATTMP + " " + MPGTMP )
+	m = p.search( s_out )
+	frames = m.group(1)
+	if options.dpg == 2:
+		gop=open(GOPTMP, 'wb')
+		stat=open(STATTMP, 'rb')
+		frame = 0
+		for line in stat:
+			sline = line.split()
+			if sline[0] == "picture" :
+				frame += 1
+			elif sline[0] == "gop":
+				gop.write (struct.pack ( "<l" , frame ))
+				gop.write (struct.pack ( "<l" , int(sline[1])/8 - 140 ))
+		gop.close()
+		stat.close()
+	return frames
 
 def conv_file(file):
 	print "Converting " + file
-	frames = conv_vid (file)
+	conv_vid (file)
 	conv_aud(file)
+	frames = mpeg_stat()
 	write_header(frames)
 	dpgname = os.path.basename ( os.path.splitext ( file )[0] ) + ".dpg"
 	
 	print "Creating " + dpgname
 	commands.getoutput( "cat \"" + HEADERTMP + "\" \"" + MP2TMP + "\" \"" + MPGTMP + "\" > \"" + dpgname + "\"")
-	print "Removing temporary files"
-	os.unlink ( MPGTMP )
-	os.unlink ( MP2TMP )
-	os.unlink ( HEADERTMP )
+	if options.dpg == 2:
+		commands.getoutput( "cat \"" + GOPTMP + "\" >> \"" + dpgname + "\"")
+	
+	cleanup_callback (0,0)
 	print "Done converting \"" + file + "\" to \"" + dpgname + "\""
 
 
@@ -211,10 +301,21 @@ parser.add_option("--font", dest="font")
 parser.add_option("--mv", dest="mv")
 parser.add_option("--ma", dest="ma")
 parser.add_option("--nosub",action="store_true", dest="nosub", default=False)
+parser.add_option("--dpg", type="int" , dest="dpg", default=2)
+parser.add_option("--pf", type="int" , dest="pf", default=3)
 
 (options, args) = parser.parse_args()
 
-#print (options)
+import signal
+
+signal.signal(signal.SIGINT, cleanup_callback)
+signal.signal(signal.SIGTERM, cleanup_callback)
+
 import commands,re,stat,struct,subprocess
+if options.dpg > 2:
+	options.dpg = 2
+if options.dpg < 0:
+	options.dpg = 2
+
 for file in args:
 	conv_file(file)
