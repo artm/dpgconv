@@ -74,6 +74,7 @@ command line options:
 
 """
 import sys, os, optparse
+
 MP2TMP="mp2tmp.mp2"
 MPGTMP="mpgtmp.mpg"
 HEADERTMP="header.tmp"
@@ -116,17 +117,17 @@ def conv_vid(file):
 	elif options.pf == 1:
 		v_pf = "format=rgb18,"
 	elif options.pf == 0:
-		v_pf = "format=rgb15,"
+		v_pf = "format=fmt=rgb15,"
 	else:
 		v_pf = "format=rgb24,"
 		options.pf = 3
 
 	if options.hq:
-		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	elif options.lq:
-		v_cmd = ( " \"" + file + "\" -v -ofps " + `options.fps` + " -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + " -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd = ( " \"" + file + "\" -v -ofps " + `options.fps` + " -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ",harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	else :
-		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ":::3 -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
+		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
 	
 	if options.nosub:
 		if options.sub != None:
@@ -283,12 +284,36 @@ def conv_file(file):
 	dpgname = os.path.basename ( os.path.splitext ( file )[0] ) + ".dpg"
 	
 	print "Creating " + dpgname
-	commands.getoutput( "cat \"" + HEADERTMP + "\" \"" + MP2TMP + "\" \"" + MPGTMP + "\" > \"" + dpgname + "\"")
+	#commands.getoutput( "cat \"" + HEADERTMP + "\" \"" + MP2TMP + "\" \"" + MPGTMP + "\" > \"" + dpgname + "\"")
+	
 	if options.dpg == 2:
-		commands.getoutput( "cat \"" + GOPTMP + "\" >> \"" + dpgname + "\"")
+		#commands.getoutput( "cat \"" + GOPTMP + "\" >> \"" + dpgname + "\"")
+		concat(dpgname,HEADERTMP,MP2TMP,MPGTMP,GOPTMP)
+	else:
+		concat(dpgname,HEADERTMP,MP2TMP,MPGTMP)
 	
 	cleanup_callback (0,0)
 	print "Done converting \"" + file + "\" to \"" + dpgname + "\""
+
+def init_names():
+	import tempfile
+	global MPGTMP,MP2TMP,HEADERTMP,GOPTMP,STATTMP
+	a,MP2TMP=tempfile.mkstemp()
+	os.close(a)
+	a,MPGTMP=tempfile.mkstemp()
+	os.close(a)
+	a,HEADERTMP=tempfile.mkstemp()
+	os.close(a)
+	a,GOPTMP=tempfile.mkstemp()
+	os.close(a)
+	a,STATTMP=tempfile.mkstemp()
+	os.close(a)
+
+def concat(out,*files):
+	outfile = open(out,'w')
+	for name in files:
+		outfile.write( open(name).read() )
+	outfile.close()
 
 
 
@@ -353,6 +378,6 @@ else:
 	exit (0)
 print "It seems we found all programs :)...continuing"
 print "______________________________________________"
-
+init_names()
 for file in args:
 	conv_file(file)
