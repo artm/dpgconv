@@ -9,6 +9,7 @@ setup(name='dpgconv',
 	author_email='theli@ukr.net',
 	url='http://theli.is-a-geek.org/blog/static/dpgconv',
 	license='GNU General Public License v2.0',
-    scripts=['dpgconv']
+    scripts=['dpgconv'],
+    classifiers=['Topic :: Multimedia :: Video :: Conversion']
     )
 
