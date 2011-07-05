@@ -151,7 +151,7 @@ def conv_vid(file):
 		options.pf = 3
 
 	if options.aspect:
-		aspect = commands.getoutput( MPLAYER + " -frames 1 -vo null -ao null -identify \"" + file + "\" | grep -E \"^ID_VIDEO_ASPECT\"")
+		aspect = commands.getoutput( MPLAYER + " -frames 1 -vo null -ao null -identify \"" + file + "\" | grep -E \"^ID_VIDEO_ASPECT\" | tail -1")
 		p = re.compile ("ID_VIDEO_ASPECT=(.*)")
 		m = p.search( aspect )
 		if m:
