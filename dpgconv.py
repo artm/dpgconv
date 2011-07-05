@@ -148,36 +148,16 @@ def conv_vid(file):
 	v_cmd = MENCODER + " " + v_cmd
 	proc = subprocess.Popen(v_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=open('/dev/null', 'w'))
 	
-#	v_out = ""
-	
 	p = re.compile ("f (\(.*%\))")
-#	f = re.compile ("([0-9]*)\/([0-9]*)\/([0-9]*)")
 	for line in proc.stdout:
-#		v_out = v_out + line
 		m = p.search( line )
 		
 		if m:
 			print "Transcoding video: " + m.group(1) + "\r" ,
-#		m = f.search(line)
-#		if m:
-#			duplicate_frame = int (m.group (1))
-#			bad_frames = int (m.group(2))
-#			skipped_frames = int (m.group(3))
+
 
 
 	print "Transcoding video:   done"
-#	p = re.compile ("secs  ([0-9]*)( frames)")
-#	m = p.search( v_out )
-#	origframes = int(m.group(1))
-	
-#	frames = origframes - bad_frames + duplicate_frame
-	
-#	print "Original file total frames:" + `origframes`
-#	print "Skipped "  + `skipped_frames` + " frames"
-#	print "Duplicated "  + `duplicate_frame` + " frames"
-#	print `bad_frames` + " bad "  + " frames"
-#	print "Output file total frames:" + `frames`
-#	return frames
 
 def conv_aud(file):
 	a_cmd = ( MENCODER + " \"" +file + "\" -v -of rawaudio -oac lavc -ovc copy -lavcopts acodec=mp2:abitrate=" + `options.abps` + " -o " + MP2TMP )
@@ -195,6 +175,9 @@ def conv_aud(file):
 			a_cmd = a_cmd + " -af channels=2,resample=" +`options.hz`+ ":1:2"
 		else:
 			a_cmd = a_cmd + " -af channels=1,resample=" +`options.hz`+ ":1:2"
+	else:
+		print "Error running mplayer:"
+		print identify
 
 	proc = subprocess.Popen(a_cmd,shell=True,stdout=subprocess.PIPE,universal_newlines=True,stderr=subprocess.STDOUT)
 
@@ -250,27 +233,38 @@ def mpeg_stat():
 	p = re.compile ("frames: ([0-9]*)\.")
 	s_out = commands.getoutput( MPEG_STAT + " -offset " + STATTMP + " " + MPGTMP )
 	m = p.search( s_out )
-	frames = m.group(1)
-	if options.dpg == 2:
-		gop=open(GOPTMP, 'wb')
-		stat=open(STATTMP, 'rb')
-		frame = 0
-		for line in stat:
-			sline = line.split()
-			if sline[0] == "picture" :
-				frame += 1
-			elif sline[0] == "gop":
-				gop.write (struct.pack ( "<l" , frame ))
-				gop.write (struct.pack ( "<l" , int(sline[1])/8 - 140 ))
-		gop.close()
-		stat.close()
+	if m:
+		frames = m.group(1)
+		if options.dpg == 2:
+			gop=open(GOPTMP, 'wb')
+			stat=open(STATTMP, 'rb')
+			frame = 0
+			for line in stat:
+				sline = line.split()
+				if sline[0] == "picture" :
+					frame += 1
+				elif sline[0] == "gop":
+					gop.write (struct.pack ( "<l" , frame ))
+					gop.write (struct.pack ( "<l" , int(sline[1])/8 - 140 ))
+			gop.close()
+			stat.close()
+	else:
+		print s_out
+		return 0
 	return frames
 
 def conv_file(file):
+	if not (os.path.lexists ( file )):
+		print "File " + file + " doesn't exist"
+		return
 	print "Converting " + file
 	conv_vid (file)
 	conv_aud(file)
 	frames = mpeg_stat()
+	if frames == 0:
+		print "Error using mpeg_stat ... see error above"
+		cleanup_callback (0,0)
+		return
 	write_header(frames)
 	dpgname = os.path.basename ( os.path.splitext ( file )[0] ) + ".dpg"
 	
@@ -316,6 +310,34 @@ if options.dpg > 2:
 	options.dpg = 2
 if options.dpg < 0:
 	options.dpg = 2
+
+
+test = commands.getoutput ( MPEG_STAT + " --" )
+m = re.compile ("mpeg_stat --(.*)").search(test)
+if m:
+	print m.group(0)
+else:
+	print "Error:"
+	print test
+	exit (0)
+test = commands.getoutput ( MPLAYER )
+m = re.compile ("^MPlayer.*").search(test)
+if m:
+	print m.group(0)
+else:
+	print "Error:"
+	print test
+	exit (0)
+test = commands.getoutput ( MENCODER)
+m = re.compile ("^MEncoder.*").search(test)
+if m:
+	print m.group(0)
+else:
+	print "Error:"
+	print test
+	exit (0)
+print "It seems we found all programs :)...continuing"
+print "______________________________________________"
 
 for file in args:
 	conv_file(file)
