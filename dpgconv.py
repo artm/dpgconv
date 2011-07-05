@@ -97,6 +97,11 @@ command line options:
 """
 
 import sys, os, optparse
+from PIL import Image
+import tempfile
+from optparse import OptionParser
+import signal
+import commands,re,stat,struct,subprocess
 
 MP2TMP="mp2tmp.mp2"
 MPGTMP="mpgtmp.mpg"
@@ -369,8 +374,6 @@ def conv_thumb(file, frames):
   	to 16 bit per pixel thumbnail.
 	Takes a PNG screenshot if no file given.
 	"""
-	from PIL import Image
-
 	shot_file = None
 	if not (os.path.lexists ( file )):
 		print "Preview file will be generated from video file."
@@ -426,7 +429,6 @@ def conv_thumb(file, frames):
 			os.unlink ( shot_file )
 
 def init_names():
-	import tempfile
 	global MPGTMP,MP2TMP,HEADERTMP,GOPTMP,STATTMP,THUMBTMP,SHOTTMP
 	a,MP2TMP=tempfile.mkstemp()
 	os.close(a)
@@ -450,7 +452,6 @@ def concat(out,*files):
 
 
 
-from optparse import OptionParser
 parser = OptionParser()
 parser.add_option("-f","--fps", type="int", dest="fps" , default=15)
 parser.add_option("-q","--hq", action="store_true", dest="hq", default=False)
@@ -477,12 +478,9 @@ parser.add_option("--aid", type="int" , dest="aid")
 parser.add_option("-2","--tp",action="store_true", dest="tp", default=False)
 (options, args) = parser.parse_args()
 
-import signal
-
 signal.signal(signal.SIGINT, cleanup_callback)
 signal.signal(signal.SIGTERM, cleanup_callback)
 
-import commands,re,stat,struct,subprocess
 if options.dpg > 4:
 	options.dpg = 2
 if options.dpg < 0:
