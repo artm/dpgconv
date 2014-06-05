@@ -174,13 +174,13 @@ def conv_vid(file):
 		if options.fps < 24:
 			print "mencoder won't work with double pass and fps < 24, forcing fps = 24"
 			options.fps = 24
-		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:vmax_b_frames=2:cmp=6:subcmp=6:precmp=6:dia=4:predia=4:bidir_refine=4:mv0_threshold=0:last_pred=3:vbitrate=" + `options.vbps` )
+		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:mv0:vmax_b_frames=2:cmp=6:subcmp=6:precmp=6:dia=4:predia=4:bidir_refine=4:mv0_threshold=0:last_pred=3:vbitrate=" + `options.vbps` )
 	elif options.hq:
-		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
+		v_cmd =  ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` +":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:mv0:cmp=6:subcmp=6:precmp=6:dia=3:predia=3:last_pred=3:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	elif options.lq:
 		v_cmd = ( " \"" + file + "\" -v -ofps " + `options.fps` + " -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ",harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo" )
 	else :
-		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:cbp:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
+		v_cmd = ( " \""+ file +"\" -v -ofps " + `options.fps` + " -sws 9 -vf " + v_pf + "scale=" + `options.width` + ":" + `options.height` + ":::3,harddup -nosound -ovc lavc -lavcopts vcodec=mpeg1video:vstrict=-2:mbd=2:trell:mv0:cmp=2:subcmp=2:precmp=2:vbitrate=" + `options.vbps` + " -o " + MPGTMP + " -of rawvideo")
 	
 	if options.nosub:
 		if options.sub != None:
